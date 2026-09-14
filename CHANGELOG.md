@@ -14,6 +14,222 @@ Unreleased entries live one per file under
 touch the same line. `./make changelog` prints what they currently say, and
 release preparation folds them into a dated section here.
 
+## [0.2.0-alpha.9] - 2026-09-14
+
+### Added
+
+- The admin account list can be filtered by whether an account is enabled,
+  whether it has set a password, whether it holds a system role, and the
+  platform it last signed in from — in Portal and on `GET /api/admin/users`
+  (`status`, `has_password`, `system_role`, `platform`) — so an operator can
+  work a specific set without paging through everyone.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/admin-account-filters.md)
+
+- `buildmax admin` gained `model list`, `model add`, `model enable`, and `model
+  disable`: managing the deployment's model catalog over the authenticated Admin
+  API, the automation peer of the Portal Models area. `model add` sends the
+  provider key in the request body only; it is stored encrypted and never read
+  back, and a deployment with no encryption key configured refuses a model that
+  carries one.
+
+- `buildmax admin` gained `user list`, `user create`, `user login-code`, `user
+  disable`, and `user enable`: managing deployment accounts over the
+  authenticated Admin API, the automation peer of the Portal Accounts area.
+  Creating an account and issuing a login code stay separate steps, and there is
+  no `set-password` — a login code lets the person choose their own password.
+
+- Added `POST /api/admin/llm/models`, so a System Administrator can add a
+  managed model through the admin API rather than only `buildmax-server model
+  add`. It takes the same fields, and `api_key` is write-only: accepted in the
+  request body, stored encrypted at rest, and returned by no read. Adding a
+  model that carries a credential requires a configured encryption key.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/admin-model-create-api.md)
+
+- A System Administrator can list an account's live login sessions and revoke
+  one of them — signing a single device out while the account's other sessions
+  keep working — through `GET` and `DELETE /api/admin/users/{user_id}/sessions/
+  {session_id}`. The listing carries only safe metadata (session id, platform,
+  and timestamps), never a token.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/admin-session-revoke.md)
+
+- `buildmax admin list`, `buildmax admin grant <email>`, and `buildmax admin
+  revoke <email>` manage deployment administrators from the signed-in CLI over
+  the same API the Portal uses, so routine administration no longer needs shell
+  access to the server's database (which `buildmax-server admin` still holds for
+  first-time and lockout recovery).
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/buildmax-admin-cli.md)
+
+- A background sweep reclaims checkpoint payloads that no checkpoint references
+  and that are older than a grace period — the bytes a worker uploaded when a
+  finalize failed or a worker died before committing the pointer — so orphaned
+  workspace-checkpoint objects no longer accumulate. The grace is set with
+  `storage.checkpoint_orphan_grace_days` (0, the default, reclaims on the next
+  hourly sweep).
+
+- The in-Portal help center now offers a Simplified Chinese translation of the
+  whole manual, with an EN / 中文 switch in the Help sidebar; the choice is
+  remembered per browser and defaults to the browser's language.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/help-chinese.md)
+
+- The Portal Accounts list now pages through every account with Previous and
+  Next controls and a "1–50 of N" position, so a deployment with more than one
+  page of accounts is fully reachable rather than stopping at the first fifty.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/portal-account-pagination.md)
+
+- Portal gains an Administrators section for managing who can operate the
+  deployment — list active grants (and revoked history), grant an account by
+  email, and revoke — and, for a confirmed administrator, Administration moves to
+  a first-level sidebar destination. The Overview now shows the caller's own
+  grant and a read-only view of the effective configuration.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/portal-administrators.md)
+
+- The Portal has a built-in help center: a **Help** icon in the top bar (and the
+  user menu) opens an end-user manual covering getting started, the CLI and TUI,
+  models and tools, extending the agent, safety, and the Portal itself. The pages
+  are plain Markdown under the repository-root `help/` directory and are baked
+  into the portal image at build time, so the manual ships with the app and needs
+  no separate site.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/portal-help-center.md)
+
+- The Portal admin Models area now has an "Add a model" form, so a System
+  Administrator can add a managed model without the server command line. The API
+  key is a password field, sent only in the request body, stored encrypted, and
+  never shown again; it is cleared as soon as the model is added. A deployment
+  with no encryption key configured reports that it cannot accept a credential.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/portal-model-create-form.md)
+
+- The Portal "Run details" view now shows what became of a run's workspace: a
+  Workspace section reports whether the run restored its base checkpoint and
+  whether its result checkpoint committed, with the bounded reason on a failure,
+  so an operator can see a run's continuity state without reading the database.
+
+- The Portal account detail now lists an account's live login sessions —
+  platform and timestamps — and an operator can revoke one of them, signing a
+  single device out while the account's other sessions keep working, alongside
+  the existing revoke-everything action.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/portal-session-list.md)
+
+- Added a complete Simplified Chinese mirror of the design records, with
+  per-page language navigation and automatic synchronization checks.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/added/simplified-chinese-design-docs.md)
+
+### Changed
+
+- Portal task runs now execute in a single `workspace/` directory — the agent's
+  working directory, holding the space's files — instead of splitting them into
+  separate read and output directories. Files an agent means to keep are
+  published with `UploadArtifact`; the run's reply is still recorded as its
+  result.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/agent-run-single-workspace-root.md)
+
+- The end-user manual now lives only in `help/`, the same pages the Portal
+  serves under **Help**; the duplicate copies under `docs/` (the old `guide/` and
+  `start/` directories and the CLI reference) are gone, so `docs/` is now
+  contributor, operator, and design material.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/help-single-doc-home.md)
+
+- Working a space issue locally moved from the `buildmax --issue <id>` flag to
+  the `buildmax issue start <id>` subcommand, alongside `issue list`, `show`, and
+  `status`. It takes the same run flags as `buildmax` itself (`-p`, `--model`,
+  `--workspace`, and so on).
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/issue-start-subcommand.md)
+
+- Managed-model provider credentials are now encrypted at rest, under the same
+  deployment key-encryption boundary that protects Space Secrets. Adding a model
+  that carries a credential (via `buildmax-server model add`) now requires a
+  configured encryption key (`secret.kek_file`); without one the credential is
+  refused rather than stored in the clear. Credential-free models (for example
+  an Ollama target) are unaffected. Existing plaintext credentials are not
+  migrated — re-add those models once an encryption key is configured.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/model-credential-encryption.md)
+
+- Opening an account in the Portal admin area now puts it in the URL
+  (`#/admin/accounts/<id>`), so the detail panel survives a reload and can be
+  linked or shared rather than vanishing when the page is refreshed.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/portal-account-detail-url.md)
+
+- The Portal admin Accounts area can now filter accounts by last-login date
+  range ("signed in after" / "signed in before"), alongside the existing
+  status, password-state, role, and platform filters. Accounts that never
+  signed in are excluded by either bound.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/portal-account-last-login-filter.md)
+
+- Creating an account in the Portal admin area now lands the operator on the new
+  account's detail, where the login code is issued, with a note that the account
+  cannot sign in until a code is issued. Create and issue-a-code remain separate
+  actions with separate audit events; the Portal only guides the operator from
+  one to the next.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/portal-joiner-flow.md)
+
+- Each session in the Portal account detail now shows its session id and when it
+  was last active alongside its platform and sign-in and expiry times, so an
+  operator can tell two sessions on the same platform apart before revoking one.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/portal-session-detail.md)
+
+- Removed the per-run "output files" list. A task run's reply is still recorded
+  and shown as its result; files a run means to keep are published with
+  `UploadArtifact` and appear as the space's artifacts, and a Task's working
+  files are recovered through its workspace checkpoint rather than downloaded
+  file by file.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/changed/remove-run-output-files.md)
+
+- The end-user manual now lives under `manual/`, while Portal continues to
+  serve it from its existing **Help** route.
+
+- `buildmax-server` sheds two routine operations now that `buildmax admin`
+  covers them: `user set-password` is removed (issue a login code and let the
+  person choose their own password — the safer equivalent), and `admin list` is
+  removed (use `buildmax admin list`, or the Portal). Creating accounts and
+  issuing login codes, and granting or revoking administrators, stay on
+  `buildmax-server` as the break-glass path.
+
+- Kubernetes worker pods now carry an ephemeral-storage request and limit, and
+  each of their scratch volumes is capped at that limit, so a runaway workspace
+  is evicted cleanly instead of filling the node. A `k8s_job` deployment must add
+  `ephemeral_storage_request` and `ephemeral_storage_limit` under
+  `worker.k8s.resources`, which are now required alongside the CPU and memory
+  bounds.
+
+### Fixed
+
+- `buildmax init` now rejects a negative `--context-window` before writing
+  `settings.yaml`; zero continues to select the provider-appropriate default.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/fixed/init-negative-context-window.md)
+
+- A signed-in CLI whose deployment rejects the stored credential with 401 (the
+  session was revoked, or the server no longer trusts the token) now reports the
+  login as expired and names `buildmax logout` to return to local mode, instead
+  of failing with a bare `list the models ... : server 401: unauthorized`.
+
+- Deployment administrator authority is now safe under concurrency: grants can
+  no longer be duplicated by a race; two administrators can no longer revoke or
+  disable at the same time and leave the deployment with no one able to reach its
+  admin area; a disabled account no longer counts as a holder; and granting a
+  role to a disabled account is refused instead of stored as unusable authority.
+
+  > **简体中文：** [阅读中文镜像](../../zh-CN/changelog/fixed/system-grant-integrity.md)
+
 ## [0.2.0-alpha.8] - 2026-09-06
 
 ### Added
@@ -2462,7 +2678,8 @@ its Portal image exists. This version replaces it.
 - Linux, macOS, and Windows archives with checksums and third-party notices.
 - Multi-architecture Linux container image published to GHCR.
 
-[Unreleased]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.8...HEAD
+[Unreleased]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.9...HEAD
+[0.2.0-alpha.9]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.8...v0.2.0-alpha.9
 [0.2.0-alpha.8]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.7...v0.2.0-alpha.8
 [0.2.0-alpha.7]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.6...v0.2.0-alpha.7
 [0.2.0-alpha.6]: https://github.com/gougoujiang/buildmax/compare/v0.2.0-alpha.4...v0.2.0-alpha.6
